@@ -24,6 +24,9 @@ import kotlin.math.abs
 
 private const val OverlayTickMillis = 1_000L
 private const val DragClickThresholdPx = 12
+private const val OverlayMinWidthDp = 220
+private const val OverlayMaxWidthDp = 280
+private const val OverlayMaxLines = 5
 
 class MealTimerOverlayService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -89,6 +92,11 @@ class MealTimerOverlayService : Service() {
         contentText = TextView(this).apply {
             setTextColor(Color.WHITE)
             textSize = 15f
+            isSingleLine = false
+            maxLines = OverlayMaxLines
+            includeFontPadding = true
+            minWidth = dpToPx(OverlayMinWidthDp)
+            maxWidth = dpToPx(OverlayMaxWidthDp)
             setLineSpacing(2f, 1f)
         }
 
@@ -104,8 +112,14 @@ class MealTimerOverlayService : Service() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.argb(230, 28, 34, 48))
-            setPadding(24, 18, 18, 18)
-            addView(contentText)
+            setPadding(24, 20, 20, 22)
+            addView(
+                contentText,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
             addView(closeText)
             setOnTouchListener(createDragTouchListener(params))
         }
@@ -137,6 +151,12 @@ class MealTimerOverlayService : Service() {
 
     private fun updateContent(state: MealTimerState) {
         contentText.text = state.overlayText()
+        overlayView?.let { view ->
+            view.requestLayout()
+            runCatching {
+                windowManager.updateViewLayout(view, view.layoutParams as WindowManager.LayoutParams)
+            }
+        }
     }
 
     private fun createDragTouchListener(params: WindowManager.LayoutParams): View.OnTouchListener {
@@ -200,7 +220,7 @@ class MealTimerOverlayService : Service() {
                 lines += "食べ終わってから ${formatDuration(it)}"
             }
         }
-        if (status == MealTimerStatus.AfterMeal) {
+        if (status == MealTimerStatus.Eating || status == MealTimerStatus.AfterMeal) {
             lines += "運動開始まで ${formatDuration(remainingUntilExerciseMillis)}"
         }
         return lines.joinToString("\n")
@@ -218,5 +238,9 @@ class MealTimerOverlayService : Service() {
         val minutes = totalSeconds / 60L
         val seconds = totalSeconds % 60L
         return String.format(Locale.JAPAN, "%02d:%02d", minutes, seconds)
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 }
