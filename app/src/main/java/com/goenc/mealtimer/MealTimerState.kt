@@ -33,4 +33,17 @@ data class MealTimerState(
 
     val timerPhase: TimerPhase
         get() = TimerPhase.fromProgress(progress)
+
+    fun withFinishedStatusIfNeeded(): MealTimerState {
+        if (
+            mealStartTime == null ||
+            status == MealTimerStatus.Idle ||
+            status == MealTimerStatus.Finished ||
+            elapsedFromStartMillis < ExerciseDelayMillis
+        ) {
+            return this
+        }
+
+        return copy(status = MealTimerStatus.Finished)
+    }
 }

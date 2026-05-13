@@ -1,6 +1,7 @@
 package com.goenc.mealtimer
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,11 +13,18 @@ import kotlinx.coroutines.launch
 
 private const val TimerTickMillis = 1_000L
 
-class MealTimerViewModel : ViewModel() {
-    private val _state = MutableStateFlow(MealTimerState())
+class MealTimerViewModel(
+    application: Application,
+) : AndroidViewModel(application) {
+    private val repository = MealTimerRepository(application)
+    private val _state = MutableStateFlow(repository.loadState())
     val state: StateFlow<MealTimerState> = _state.asStateFlow()
 
     init {
+        if (_state.value.status != MealTimerStatus.Idle && _state.value.mealStartTime != null) {
+            MealTimerForegroundService.start(getApplication())
+        }
+
         viewModelScope.launch {
             while (isActive) {
                 delay(TimerTickMillis)
@@ -27,11 +35,14 @@ class MealTimerViewModel : ViewModel() {
 
     fun startMeal() {
         val now = System.currentTimeMillis()
-        _state.value = MealTimerState(
+        val started = MealTimerState(
             status = MealTimerStatus.Eating,
             mealStartTime = now,
             currentTime = now,
         )
+        repository.saveState(started)
+        _state.value = started
+        MealTimerForegroundService.start(getApplication())
     }
 
     fun finishMeal() {
@@ -41,7 +52,7 @@ class MealTimerViewModel : ViewModel() {
                 current
             } else {
                 val updated = current.copy(currentTime = now)
-                updated.copy(
+                val finished = updated.copy(
                     status = if (updated.elapsedFromStartMillis >= ExerciseDelayMillis) {
                         MealTimerStatus.Finished
                     } else {
@@ -49,26 +60,27 @@ class MealTimerViewModel : ViewModel() {
                     },
                     mealEndTime = now,
                 )
+                repository.saveState(finished)
+                MealTimerForegroundService.start(getApplication())
+                finished
             }
         }
     }
 
     fun reset() {
+        repository.clearState()
+        MealTimerForegroundService.stop(getApplication())
         _state.value = MealTimerState(currentTime = System.currentTimeMillis())
     }
 
     private fun tick(now: Long) {
         _state.update { current ->
             val updated = current.copy(currentTime = now)
-            if (
-                updated.mealStartTime != null &&
-                updated.status != MealTimerStatus.Idle &&
-                updated.elapsedFromStartMillis >= ExerciseDelayMillis
-            ) {
-                updated.copy(status = MealTimerStatus.Finished)
-            } else {
-                updated
+            val resolved = updated.withFinishedStatusIfNeeded()
+            if (resolved.status != updated.status) {
+                repository.saveState(resolved)
             }
+            resolved
         }
     }
 }

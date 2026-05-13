@@ -201,7 +201,7 @@ private fun TimerActions(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onReset,
             ) {
-                Text(text = "リセット")
+                Text(text = "停止してリセット")
             }
         }
 
