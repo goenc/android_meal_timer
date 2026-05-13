@@ -26,9 +26,9 @@ private const val OverlayTickMillis = 1_000L
 private const val DragClickThresholdPx = 12
 private const val OverlayMaxLines = 5
 private const val OverlayTextSizeSp = 15f
-private const val OverlayWidthEatingDp = 172
-private const val OverlayWidthAfterMealDp = 208
-private const val OverlayWidthFinishedDp = 196
+private const val OverlayWidthEatingDp = 156
+private const val OverlayWidthAfterMealDp = 184
+private const val OverlayWidthFinishedDp = 174
 private const val OverlayTextHeightEatingDp = 86
 private const val OverlayTextHeightAfterMealDp = 116
 private const val OverlayTextHeightFinishedDp = 96
@@ -111,7 +111,7 @@ class MealTimerOverlayService : Service() {
             setTextColor(Color.WHITE)
             textSize = 20f
             gravity = Gravity.CENTER
-            setPadding(8, 0, 0, 0)
+            setPadding(6, 0, 0, 0)
             setOnClickListener { stopSelf() }
         }
 
@@ -119,7 +119,7 @@ class MealTimerOverlayService : Service() {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.argb(230, 28, 34, 48))
             clipToPadding = false
-            setPadding(14, 14, 12, 18)
+            setPadding(10, 14, 8, 18)
             addView(
                 contentText,
                 LinearLayout.LayoutParams(
