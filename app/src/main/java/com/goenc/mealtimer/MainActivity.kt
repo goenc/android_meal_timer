@@ -34,15 +34,30 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.goenc.mealtimer.ui.theme.MealTimerTheme
 
 class MainActivity : ComponentActivity() {
+    private lateinit var overlayController: MealTimerOverlayController
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        overlayController = MealTimerOverlayController(this)
         requestNotificationPermissionIfNeeded()
         enableEdgeToEdge()
         setContent {
             MealTimerTheme {
-                MealTimerApp()
+                MealTimerApp(
+                    onOverlayPermissionRequired = ::openOverlayPermissionSettings,
+                )
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        overlayController.stopOverlay()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        overlayController.showOverlayIfAllowed()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -53,6 +68,10 @@ class MainActivity : ComponentActivity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100)
         }
     }
+
+    private fun openOverlayPermissionSettings() {
+        startActivity(OverlayPermissionHelper.createSettingsIntent(this))
+    }
 }
 
 private enum class AppScreen {
@@ -62,6 +81,7 @@ private enum class AppScreen {
 
 @Composable
 private fun MealTimerApp(
+    onOverlayPermissionRequired: () -> Unit,
     photoViewModel: MealPhotoViewModel = viewModel(),
 ) {
     var currentScreen by remember { mutableStateOf(AppScreen.Timer) }
@@ -90,6 +110,7 @@ private fun MealTimerApp(
                     MealTimerScreen(
                         onPhotoCaptureClick = { showMealTypeDialog = true },
                         onPhotoListClick = { currentScreen = AppScreen.Photos },
+                        onOverlayPermissionRequired = onOverlayPermissionRequired,
                     )
                 }
 

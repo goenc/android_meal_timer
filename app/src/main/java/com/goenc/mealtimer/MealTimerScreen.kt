@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,15 +38,26 @@ import java.util.Locale
 fun MealTimerScreen(
     onPhotoCaptureClick: () -> Unit,
     onPhotoListClick: () -> Unit,
+    onOverlayPermissionRequired: () -> Unit,
     viewModel: MealTimerViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
     val state by viewModel.state.collectAsState()
+    val overlayEnabled by viewModel.overlayEnabled.collectAsState()
 
     MealTimerContent(
         state = state,
+        overlayEnabled = overlayEnabled,
         onStartMeal = viewModel::startMeal,
         onFinishMeal = viewModel::finishMeal,
         onReset = viewModel::reset,
+        onOverlayEnabledChange = { enabled ->
+            if (enabled && !OverlayPermissionHelper.canDrawOverlays(context)) {
+                onOverlayPermissionRequired()
+            } else {
+                viewModel.setOverlayEnabled(enabled)
+            }
+        },
         onPhotoCaptureClick = onPhotoCaptureClick,
         onPhotoListClick = onPhotoListClick,
     )
@@ -52,9 +66,11 @@ fun MealTimerScreen(
 @Composable
 fun MealTimerContent(
     state: MealTimerState,
+    overlayEnabled: Boolean,
     onStartMeal: () -> Unit,
     onFinishMeal: () -> Unit,
     onReset: () -> Unit,
+    onOverlayEnabledChange: (Boolean) -> Unit,
     onPhotoCaptureClick: () -> Unit,
     onPhotoListClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -95,6 +111,8 @@ fun MealTimerContent(
                 onStartMeal = onStartMeal,
                 onFinishMeal = onFinishMeal,
                 onReset = onReset,
+                overlayEnabled = overlayEnabled,
+                onOverlayEnabledChange = onOverlayEnabledChange,
                 onPhotoCaptureClick = onPhotoCaptureClick,
                 onPhotoListClick = onPhotoListClick,
             )
@@ -163,6 +181,8 @@ private fun TimerActions(
     onStartMeal: () -> Unit,
     onFinishMeal: () -> Unit,
     onReset: () -> Unit,
+    overlayEnabled: Boolean,
+    onOverlayEnabledChange: (Boolean) -> Unit,
     onPhotoCaptureClick: () -> Unit,
     onPhotoListClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -203,6 +223,22 @@ private fun TimerActions(
             ) {
                 Text(text = "停止してリセット")
             }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "最小化時に小窓表示",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            Switch(
+                checked = overlayEnabled,
+                onCheckedChange = onOverlayEnabledChange,
+            )
         }
 
         Button(
@@ -254,9 +290,11 @@ private fun EatingPreview() {
                 mealStartTime = 0L,
                 currentTime = 12 * 60 * 1_000L,
             ),
+            overlayEnabled = false,
             onStartMeal = {},
             onFinishMeal = {},
             onReset = {},
+            onOverlayEnabledChange = {},
             onPhotoCaptureClick = {},
             onPhotoListClick = {},
         )
@@ -274,9 +312,11 @@ private fun AfterMealPreview() {
                 mealEndTime = 18 * 60 * 1_000L,
                 currentTime = 25 * 60 * 1_000L,
             ),
+            overlayEnabled = true,
             onStartMeal = {},
             onFinishMeal = {},
             onReset = {},
+            onOverlayEnabledChange = {},
             onPhotoCaptureClick = {},
             onPhotoListClick = {},
         )

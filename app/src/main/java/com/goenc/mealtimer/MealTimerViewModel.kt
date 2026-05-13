@@ -17,8 +17,11 @@ class MealTimerViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
     private val repository = MealTimerRepository(application)
+    private val overlayController = MealTimerOverlayController(application)
     private val _state = MutableStateFlow(repository.loadState())
     val state: StateFlow<MealTimerState> = _state.asStateFlow()
+    private val _overlayEnabled = MutableStateFlow(overlayController.isOverlayEnabled())
+    val overlayEnabled: StateFlow<Boolean> = _overlayEnabled.asStateFlow()
 
     init {
         if (_state.value.status != MealTimerStatus.Idle && _state.value.mealStartTime != null) {
@@ -70,7 +73,13 @@ class MealTimerViewModel(
     fun reset() {
         repository.clearState()
         MealTimerForegroundService.stop(getApplication())
+        overlayController.stopOverlay()
         _state.value = MealTimerState(currentTime = System.currentTimeMillis())
+    }
+
+    fun setOverlayEnabled(enabled: Boolean) {
+        overlayController.setOverlayEnabled(enabled)
+        _overlayEnabled.value = enabled
     }
 
     private fun tick(now: Long) {
