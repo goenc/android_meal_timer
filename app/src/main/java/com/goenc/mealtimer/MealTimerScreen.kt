@@ -1,9 +1,10 @@
 package com.goenc.mealtimer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,8 @@ import java.util.Locale
 
 @Composable
 fun MealTimerScreen(
+    onPhotoCaptureClick: () -> Unit,
+    onPhotoListClick: () -> Unit,
     viewModel: MealTimerViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -41,6 +44,8 @@ fun MealTimerScreen(
         onStartMeal = viewModel::startMeal,
         onFinishMeal = viewModel::finishMeal,
         onReset = viewModel::reset,
+        onPhotoCaptureClick = onPhotoCaptureClick,
+        onPhotoListClick = onPhotoListClick,
     )
 }
 
@@ -50,6 +55,8 @@ fun MealTimerContent(
     onStartMeal: () -> Unit,
     onFinishMeal: () -> Unit,
     onReset: () -> Unit,
+    onPhotoCaptureClick: () -> Unit,
+    onPhotoListClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -63,8 +70,9 @@ fun MealTimerContent(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 28.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 24.dp, vertical = 28.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
@@ -87,6 +95,8 @@ fun MealTimerContent(
                 onStartMeal = onStartMeal,
                 onFinishMeal = onFinishMeal,
                 onReset = onReset,
+                onPhotoCaptureClick = onPhotoCaptureClick,
+                onPhotoListClick = onPhotoListClick,
             )
         }
     }
@@ -153,6 +163,8 @@ private fun TimerActions(
     onStartMeal: () -> Unit,
     onFinishMeal: () -> Unit,
     onReset: () -> Unit,
+    onPhotoCaptureClick: () -> Unit,
+    onPhotoListClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -191,6 +203,20 @@ private fun TimerActions(
             ) {
                 Text(text = "リセット")
             }
+        }
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onPhotoCaptureClick,
+        ) {
+            Text(text = "食事写真を撮る")
+        }
+
+        OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onPhotoListClick,
+        ) {
+            Text(text = "写真一覧")
         }
     }
 }
@@ -231,6 +257,8 @@ private fun EatingPreview() {
             onStartMeal = {},
             onFinishMeal = {},
             onReset = {},
+            onPhotoCaptureClick = {},
+            onPhotoListClick = {},
         )
     }
 }
@@ -249,6 +277,8 @@ private fun AfterMealPreview() {
             onStartMeal = {},
             onFinishMeal = {},
             onReset = {},
+            onPhotoCaptureClick = {},
+            onPhotoListClick = {},
         )
     }
 }
