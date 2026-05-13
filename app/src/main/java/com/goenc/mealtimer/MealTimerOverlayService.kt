@@ -24,10 +24,14 @@ import kotlin.math.abs
 
 private const val OverlayTickMillis = 1_000L
 private const val DragClickThresholdPx = 12
-private const val OverlayMinWidthDp = 220
-private const val OverlayMaxWidthDp = 280
 private const val OverlayMaxLines = 5
-private const val OverlayTextMinHeightDp = 118
+private const val OverlayTextSizeSp = 15f
+private const val OverlayWidthEatingDp = 188
+private const val OverlayWidthAfterMealDp = 232
+private const val OverlayWidthFinishedDp = 218
+private const val OverlayTextHeightEatingDp = 86
+private const val OverlayTextHeightAfterMealDp = 116
+private const val OverlayTextHeightFinishedDp = 96
 
 class MealTimerOverlayService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -90,15 +94,14 @@ class MealTimerOverlayService : Service() {
             y = 180
         }
 
+        val initialState = repository.loadState()
+
         contentText = TextView(this).apply {
             setTextColor(Color.WHITE)
-            textSize = 15f
+            textSize = OverlayTextSizeSp
             isSingleLine = false
             maxLines = OverlayMaxLines
             includeFontPadding = true
-            minWidth = dpToPx(OverlayMinWidthDp)
-            maxWidth = dpToPx(OverlayMaxWidthDp)
-            minHeight = dpToPx(OverlayTextMinHeightDp)
             setPadding(0, 0, 0, dpToPx(8))
             setLineSpacing(dpToPx(4).toFloat(), 1f)
         }
@@ -115,21 +118,20 @@ class MealTimerOverlayService : Service() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.argb(230, 28, 34, 48))
-            minimumHeight = dpToPx(OverlayTextMinHeightDp + 32)
             clipToPadding = false
-            setPadding(24, 22, 20, 28)
+            setPadding(18, 14, 16, 18)
             addView(
                 contentText,
                 LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    dpToPx(stateWidthDp(initialState)),
+                    dpToPx(stateTextHeightDp(initialState)),
                 ),
             )
             addView(closeText)
             setOnTouchListener(createDragTouchListener(params))
         }
         overlayView = root
-        updateContent(repository.loadState())
+        updateContent(initialState)
         windowManager.addView(root, params)
     }
 
@@ -157,6 +159,10 @@ class MealTimerOverlayService : Service() {
     private fun updateContent(state: MealTimerState) {
         contentText.text = state.overlayText()
         overlayView?.let { view ->
+            contentText.layoutParams = contentText.layoutParams.apply {
+                width = dpToPx(stateWidthDp(state))
+                height = dpToPx(stateTextHeightDp(state))
+            }
             view.requestLayout()
             runCatching {
                 windowManager.updateViewLayout(view, view.layoutParams as WindowManager.LayoutParams)
@@ -247,5 +253,19 @@ class MealTimerOverlayService : Service() {
 
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
+    }
+
+    private fun stateWidthDp(state: MealTimerState): Int = when (state.status) {
+        MealTimerStatus.Idle -> OverlayWidthEatingDp
+        MealTimerStatus.Eating -> OverlayWidthEatingDp
+        MealTimerStatus.AfterMeal -> OverlayWidthAfterMealDp
+        MealTimerStatus.Finished -> OverlayWidthFinishedDp
+    }
+
+    private fun stateTextHeightDp(state: MealTimerState): Int = when (state.status) {
+        MealTimerStatus.Idle -> OverlayTextHeightEatingDp
+        MealTimerStatus.Eating -> OverlayTextHeightEatingDp
+        MealTimerStatus.AfterMeal -> OverlayTextHeightAfterMealDp
+        MealTimerStatus.Finished -> OverlayTextHeightFinishedDp
     }
 }
