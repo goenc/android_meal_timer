@@ -27,6 +27,7 @@ private const val DragClickThresholdPx = 12
 private const val OverlayMinWidthDp = 220
 private const val OverlayMaxWidthDp = 280
 private const val OverlayMaxLines = 5
+private const val OverlayTextMinHeightDp = 118
 
 class MealTimerOverlayService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -97,7 +98,9 @@ class MealTimerOverlayService : Service() {
             includeFontPadding = true
             minWidth = dpToPx(OverlayMinWidthDp)
             maxWidth = dpToPx(OverlayMaxWidthDp)
-            setLineSpacing(2f, 1f)
+            minHeight = dpToPx(OverlayTextMinHeightDp)
+            setPadding(0, 0, 0, dpToPx(8))
+            setLineSpacing(dpToPx(4).toFloat(), 1f)
         }
 
         val closeText = TextView(this).apply {
@@ -112,7 +115,9 @@ class MealTimerOverlayService : Service() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.argb(230, 28, 34, 48))
-            setPadding(24, 20, 20, 22)
+            minimumHeight = dpToPx(OverlayTextMinHeightDp + 32)
+            clipToPadding = false
+            setPadding(24, 22, 20, 28)
             addView(
                 contentText,
                 LinearLayout.LayoutParams(
