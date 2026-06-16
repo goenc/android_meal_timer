@@ -20,6 +20,8 @@ class MealTimerViewModel(
     private val overlayController = MealTimerOverlayController(application)
     private val _state = MutableStateFlow(repository.loadState())
     val state: StateFlow<MealTimerState> = _state.asStateFlow()
+    private val _configuredExerciseDelayMillis = MutableStateFlow(repository.loadExerciseDelayMillis())
+    val configuredExerciseDelayMillis: StateFlow<Long> = _configuredExerciseDelayMillis.asStateFlow()
     private val _overlayEnabled = MutableStateFlow(overlayController.isOverlayEnabled())
     val overlayEnabled: StateFlow<Boolean> = _overlayEnabled.asStateFlow()
 
@@ -41,6 +43,7 @@ class MealTimerViewModel(
         val started = MealTimerState(
             status = MealTimerStatus.Eating,
             mealStartTime = now,
+            exerciseDelayMillis = _configuredExerciseDelayMillis.value,
             currentTime = now,
         )
         repository.saveState(started)
@@ -54,15 +57,9 @@ class MealTimerViewModel(
             if (current.status != MealTimerStatus.Eating) {
                 current
             } else {
-                val updated = current.copy(currentTime = now)
-                val finished = updated.copy(
-                    status = if (updated.elapsedFromStartMillis >= ExerciseDelayMillis) {
-                        MealTimerStatus.Finished
-                    } else {
-                        MealTimerStatus.AfterMeal
-                    },
-                    mealEndTime = now,
-                )
+                val finished = current
+                    .copy(currentTime = now, mealEndTime = now)
+                    .withFinishedStatusIfNeeded()
                 repository.saveState(finished)
                 MealTimerForegroundService.start(getApplication())
                 finished
@@ -80,6 +77,11 @@ class MealTimerViewModel(
     fun setOverlayEnabled(enabled: Boolean) {
         overlayController.setOverlayEnabled(enabled)
         _overlayEnabled.value = enabled
+    }
+
+    fun setExerciseDelayMillis(millis: Long) {
+        repository.saveExerciseDelayMillis(millis)
+        _configuredExerciseDelayMillis.value = millis
     }
 
     private fun tick(now: Long) {

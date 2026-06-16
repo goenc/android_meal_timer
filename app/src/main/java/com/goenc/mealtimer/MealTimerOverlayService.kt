@@ -4,10 +4,11 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
+import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -24,19 +25,17 @@ import kotlin.math.abs
 
 private const val OverlayTickMillis = 1_000L
 private const val DragClickThresholdPx = 12
-private const val OverlayMaxLines = 5
+private const val OverlayMaxContentLines = 4
 private const val OverlayTextSizeSp = 15f
-private const val OverlayWidthEatingDp = 156
-private const val OverlayWidthAfterMealDp = 184
-private const val OverlayWidthFinishedDp = 174
-private const val OverlayTextHeightEatingDp = 86
-private const val OverlayTextHeightAfterMealDp = 116
-private const val OverlayTextHeightFinishedDp = 96
+private const val OverlayWidthDp = 95
+private const val OverlayTextHeightDp = 60
 
 class MealTimerOverlayService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var repository: MealTimerRepository
+    private lateinit var overlayController: MealTimerOverlayController
     private lateinit var windowManager: WindowManager
+    private lateinit var titleText: TextView
     private lateinit var contentText: TextView
     private var overlayView: View? = null
     private var updateJob: Job? = null
@@ -44,6 +43,7 @@ class MealTimerOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         repository = MealTimerRepository(this)
+        overlayController = MealTimerOverlayController(this)
         windowManager = getSystemService(WindowManager::class.java)
     }
 
@@ -82,6 +82,7 @@ class MealTimerOverlayService : Service() {
             return
         }
 
+        val savedPosition = overlayController.loadOverlayPosition()
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -90,19 +91,25 @@ class MealTimerOverlayService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = 32
-            y = 180
+            x = savedPosition.first
+            y = savedPosition.second
         }
 
-        val initialState = repository.loadState()
+        titleText = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = OverlayTextSizeSp
+            gravity = Gravity.CENTER_HORIZONTAL
+            includeFontPadding = true
+        }
 
         contentText = TextView(this).apply {
             setTextColor(Color.WHITE)
             textSize = OverlayTextSizeSp
             isSingleLine = false
-            maxLines = OverlayMaxLines
+            maxLines = OverlayMaxContentLines
+            gravity = Gravity.CENTER
             includeFontPadding = true
-            setPadding(0, 0, 0, dpToPx(8))
+            setPadding(0, 0, 0, dpToPx(4))
             setLineSpacing(dpToPx(4).toFloat(), 1f)
         }
 
@@ -113,25 +120,44 @@ class MealTimerOverlayService : Service() {
             gravity = Gravity.CENTER
             setPadding(6, 0, 0, 0)
             setOnClickListener { stopSelf() }
+            visibility = View.GONE
+        }
+
+        val textContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            addView(
+                titleText,
+                LinearLayout.LayoutParams(
+                    dpToPx(OverlayWidthDp),
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            addView(
+                contentText,
+                LinearLayout.LayoutParams(
+                    dpToPx(OverlayWidthDp),
+                    dpToPx(OverlayTextHeightDp),
+                ),
+            )
         }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.argb(230, 28, 34, 48))
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.argb(230, 28, 34, 48))
+                cornerRadius = dpToPx(12).toFloat()
+            }
             clipToPadding = false
-            setPadding(10, 14, 8, 18)
-            addView(
-                contentText,
-                LinearLayout.LayoutParams(
-                    dpToPx(stateWidthDp(initialState)),
-                    dpToPx(stateTextHeightDp(initialState)),
-                ),
-            )
+            setPadding(7, 12, 6, 8)
+            addView(textContainer)
             addView(closeText)
             setOnTouchListener(createDragTouchListener(params))
         }
         overlayView = root
-        updateContent(initialState)
+        updateContent(repository.loadState())
         windowManager.addView(root, params)
     }
 
@@ -157,11 +183,12 @@ class MealTimerOverlayService : Service() {
     }
 
     private fun updateContent(state: MealTimerState) {
-        contentText.text = state.overlayText()
+        titleText.text = state.status.overlayTitle()
+        contentText.text = state.overlayBodyText()
         overlayView?.let { view ->
             contentText.layoutParams = contentText.layoutParams.apply {
-                width = dpToPx(stateWidthDp(state))
-                height = dpToPx(stateTextHeightDp(state))
+                width = dpToPx(OverlayWidthDp)
+                height = dpToPx(OverlayTextHeightDp)
             }
             view.requestLayout()
             runCatching {
@@ -196,6 +223,7 @@ class MealTimerOverlayService : Service() {
                 MotionEvent.ACTION_UP -> {
                     val movedX = abs(event.rawX - downRawX)
                     val movedY = abs(event.rawY - downRawY)
+                    overlayController.saveOverlayPosition(params.x, params.y)
                     if (movedX < DragClickThresholdPx && movedY < DragClickThresholdPx) {
                         openMainActivity()
                     }
@@ -223,16 +251,16 @@ class MealTimerOverlayService : Service() {
         overlayView = null
     }
 
-    private fun MealTimerState.overlayText(): String {
-        val lines = mutableListOf(status.overlayTitle())
-        lines += "食べ始めから ${formatDuration(elapsedFromStartMillis)}"
+    private fun MealTimerState.overlayBodyText(): String {
+        val lines = mutableListOf<String>()
+        lines += "食始 ${formatDuration(elapsedFromStartMillis)}"
         if (status == MealTimerStatus.AfterMeal || status == MealTimerStatus.Finished) {
             elapsedAfterMealMillis?.let {
-                lines += "食べ終わってから ${formatDuration(it)}"
+                lines += "食終 ${formatDuration(it)}"
             }
         }
-        if (status == MealTimerStatus.Eating || status == MealTimerStatus.AfterMeal) {
-            lines += "運動開始まで ${formatDuration(remainingUntilExerciseMillis)}"
+        if (status == MealTimerStatus.Eating) {
+            lines += "運開 ${formatDuration(remainingUntilExerciseMillis)}"
         }
         return lines.joinToString("\n")
     }
@@ -241,7 +269,7 @@ class MealTimerOverlayService : Service() {
         MealTimerStatus.Idle -> "食事タイマー"
         MealTimerStatus.Eating -> "食事中"
         MealTimerStatus.AfterMeal -> "食後"
-        MealTimerStatus.Finished -> "運動開始"
+        MealTimerStatus.Finished -> "食後"
     }
 
     private fun formatDuration(millis: Long): String {
@@ -255,17 +283,4 @@ class MealTimerOverlayService : Service() {
         return (dp * resources.displayMetrics.density).toInt()
     }
 
-    private fun stateWidthDp(state: MealTimerState): Int = when (state.status) {
-        MealTimerStatus.Idle -> OverlayWidthEatingDp
-        MealTimerStatus.Eating -> OverlayWidthEatingDp
-        MealTimerStatus.AfterMeal -> OverlayWidthAfterMealDp
-        MealTimerStatus.Finished -> OverlayWidthFinishedDp
-    }
-
-    private fun stateTextHeightDp(state: MealTimerState): Int = when (state.status) {
-        MealTimerStatus.Idle -> OverlayTextHeightEatingDp
-        MealTimerStatus.Eating -> OverlayTextHeightEatingDp
-        MealTimerStatus.AfterMeal -> OverlayTextHeightAfterMealDp
-        MealTimerStatus.Finished -> OverlayTextHeightFinishedDp
-    }
 }

@@ -62,7 +62,7 @@ object MealTimerNotification {
         MealTimerStatus.Idle -> "食事タイマー"
         MealTimerStatus.Eating -> "食事中"
         MealTimerStatus.AfterMeal -> "食後"
-        MealTimerStatus.Finished -> "運動開始"
+        MealTimerStatus.Finished -> "食後"
     }
 
     private fun MealTimerState.notificationSummary(): String {
@@ -70,7 +70,7 @@ object MealTimerNotification {
         elapsedAfterMealMillis?.let {
             parts += "食べ終わってから ${formatDuration(it)}"
         }
-        if (status != MealTimerStatus.Finished) {
+        if (status == MealTimerStatus.Eating) {
             parts += "運動開始まで ${formatDuration(remainingUntilExerciseMillis)}"
         }
         return parts.joinToString("\n")

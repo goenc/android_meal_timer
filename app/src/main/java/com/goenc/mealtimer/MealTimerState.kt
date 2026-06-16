@@ -3,8 +3,7 @@ package com.goenc.mealtimer
 private const val SecondsPerMinute = 60L
 private const val MillisPerSecond = 1_000L
 
-const val ExerciseDelayMinutes = 30L
-const val ExerciseDelayMillis = ExerciseDelayMinutes * SecondsPerMinute * MillisPerSecond
+const val DefaultExerciseDelayMillis = 30L * SecondsPerMinute * MillisPerSecond
 
 enum class MealTimerStatus {
     Idle,
@@ -17,6 +16,7 @@ data class MealTimerState(
     val status: MealTimerStatus = MealTimerStatus.Idle,
     val mealStartTime: Long? = null,
     val mealEndTime: Long? = null,
+    val exerciseDelayMillis: Long = DefaultExerciseDelayMillis,
     val currentTime: Long = System.currentTimeMillis(),
 ) {
     val elapsedFromStartMillis: Long
@@ -26,24 +26,30 @@ data class MealTimerState(
         get() = mealEndTime?.let { (currentTime - it).coerceAtLeast(0L) }
 
     val remainingUntilExerciseMillis: Long
-        get() = (ExerciseDelayMillis - elapsedFromStartMillis).coerceAtLeast(0L)
+        get() = (exerciseDelayMillis - elapsedFromStartMillis).coerceAtLeast(0L)
 
     val progress: Float
-        get() = if (mealStartTime == null) 0f else elapsedFromStartMillis.toFloat() / ExerciseDelayMillis
+        get() = if (mealStartTime == null) 0f else elapsedFromStartMillis.toFloat() / exerciseDelayMillis
 
     val timerPhase: TimerPhase
         get() = TimerPhase.fromProgress(progress)
 
     fun withFinishedStatusIfNeeded(): MealTimerState {
-        if (
-            mealStartTime == null ||
-            status == MealTimerStatus.Idle ||
-            status == MealTimerStatus.Finished ||
-            elapsedFromStartMillis < ExerciseDelayMillis
-        ) {
+        if (mealStartTime == null || status == MealTimerStatus.Idle) {
             return this
         }
 
-        return copy(status = MealTimerStatus.Finished)
+        if (mealEndTime != null) {
+            return copy(status = MealTimerStatus.AfterMeal)
+        }
+
+        if (elapsedFromStartMillis < exerciseDelayMillis) {
+            return this
+        }
+
+        return copy(
+            status = MealTimerStatus.AfterMeal,
+            mealEndTime = mealEndTime ?: currentTime,
+        )
     }
 }

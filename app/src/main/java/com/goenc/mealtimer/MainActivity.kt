@@ -76,12 +76,14 @@ class MainActivity : ComponentActivity() {
 
 private enum class AppScreen {
     Timer,
+    Settings,
     Photos,
 }
 
 @Composable
 private fun MealTimerApp(
     onOverlayPermissionRequired: () -> Unit,
+    timerViewModel: MealTimerViewModel = viewModel(),
     photoViewModel: MealPhotoViewModel = viewModel(),
 ) {
     var currentScreen by remember { mutableStateOf(AppScreen.Timer) }
@@ -89,6 +91,7 @@ private fun MealTimerApp(
     var pendingMealType by remember { mutableStateOf<MealType?>(null) }
     var selectedPhoto by remember { mutableStateOf<MealPhoto?>(null) }
     val photos by photoViewModel.photos.collectAsState()
+    val configuredExerciseDelayMillis by timerViewModel.configuredExerciseDelayMillis.collectAsState()
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview(),
     ) { bitmap: Bitmap? ->
@@ -110,7 +113,17 @@ private fun MealTimerApp(
                     MealTimerScreen(
                         onPhotoCaptureClick = { showMealTypeDialog = true },
                         onPhotoListClick = { currentScreen = AppScreen.Photos },
+                        onOpenSettingsClick = { currentScreen = AppScreen.Settings },
                         onOverlayPermissionRequired = onOverlayPermissionRequired,
+                        viewModel = timerViewModel,
+                    )
+                }
+
+                AppScreen.Settings -> {
+                    MealTimerSettingsScreen(
+                        selectedDelayMillis = configuredExerciseDelayMillis,
+                        onSelectDelayMillis = timerViewModel::setExerciseDelayMillis,
+                        onBack = { currentScreen = AppScreen.Timer },
                     )
                 }
 

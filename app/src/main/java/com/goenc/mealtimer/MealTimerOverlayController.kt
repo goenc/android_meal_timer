@@ -5,6 +5,10 @@ import android.content.Intent
 
 private const val OverlayPreferencesName = "meal_timer_overlay"
 private const val KeyOverlayEnabled = "overlayEnabled"
+private const val KeyOverlayPositionX = "overlayPositionX"
+private const val KeyOverlayPositionY = "overlayPositionY"
+private const val DefaultOverlayPositionX = 32
+private const val DefaultOverlayPositionY = 280
 
 class MealTimerOverlayController(
     context: Context,
@@ -16,6 +20,19 @@ class MealTimerOverlayController(
     )
 
     fun isOverlayEnabled(): Boolean = preferences.getBoolean(KeyOverlayEnabled, false)
+
+    fun loadOverlayPosition(): Pair<Int, Int> {
+        val x = preferences.getInt(KeyOverlayPositionX, DefaultOverlayPositionX)
+        val y = preferences.getInt(KeyOverlayPositionY, DefaultOverlayPositionY)
+        return x to y
+    }
+
+    fun saveOverlayPosition(x: Int, y: Int) {
+        preferences.edit()
+            .putInt(KeyOverlayPositionX, x)
+            .putInt(KeyOverlayPositionY, y)
+            .apply()
+    }
 
     fun setOverlayEnabled(enabled: Boolean) {
         preferences.edit().putBoolean(KeyOverlayEnabled, enabled).apply()

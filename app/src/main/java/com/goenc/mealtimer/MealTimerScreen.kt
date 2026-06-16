@@ -38,6 +38,7 @@ import java.util.Locale
 fun MealTimerScreen(
     onPhotoCaptureClick: () -> Unit,
     onPhotoListClick: () -> Unit,
+    onOpenSettingsClick: () -> Unit,
     onOverlayPermissionRequired: () -> Unit,
     viewModel: MealTimerViewModel = viewModel(),
 ) {
@@ -60,6 +61,7 @@ fun MealTimerScreen(
         },
         onPhotoCaptureClick = onPhotoCaptureClick,
         onPhotoListClick = onPhotoListClick,
+        onOpenSettingsClick = onOpenSettingsClick,
     )
 }
 
@@ -73,6 +75,7 @@ fun MealTimerContent(
     onOverlayEnabledChange: (Boolean) -> Unit,
     onPhotoCaptureClick: () -> Unit,
     onPhotoListClick: () -> Unit,
+    onOpenSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -115,6 +118,7 @@ fun MealTimerContent(
                 onOverlayEnabledChange = onOverlayEnabledChange,
                 onPhotoCaptureClick = onPhotoCaptureClick,
                 onPhotoListClick = onPhotoListClick,
+                onOpenSettingsClick = onOpenSettingsClick,
             )
         }
     }
@@ -139,7 +143,7 @@ private fun TimerValues(
                 value = formatMillis(it),
             )
         }
-        if (state.status != MealTimerStatus.Idle && state.status != MealTimerStatus.Finished) {
+        if (state.status == MealTimerStatus.Eating) {
             TimerValue(
                 label = "運動開始まで",
                 value = formatMillis(state.remainingUntilExerciseMillis),
@@ -185,6 +189,7 @@ private fun TimerActions(
     onOverlayEnabledChange: (Boolean) -> Unit,
     onPhotoCaptureClick: () -> Unit,
     onPhotoListClick: () -> Unit,
+    onOpenSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -254,6 +259,13 @@ private fun TimerActions(
         ) {
             Text(text = "写真一覧")
         }
+
+        OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onOpenSettingsClick,
+        ) {
+            Text(text = "設定")
+        }
     }
 }
 
@@ -261,7 +273,7 @@ private fun MealTimerStatus.titleText(): String = when (this) {
     MealTimerStatus.Idle -> "食事タイマー"
     MealTimerStatus.Eating -> "食事中"
     MealTimerStatus.AfterMeal -> "食後"
-    MealTimerStatus.Finished -> "運動開始"
+    MealTimerStatus.Finished -> "食後"
 }
 
 private fun TimerPhase.backgroundColor(): Color = when (this) {
@@ -297,6 +309,7 @@ private fun EatingPreview() {
             onOverlayEnabledChange = {},
             onPhotoCaptureClick = {},
             onPhotoListClick = {},
+            onOpenSettingsClick = {},
         )
     }
 }
@@ -319,6 +332,7 @@ private fun AfterMealPreview() {
             onOverlayEnabledChange = {},
             onPhotoCaptureClick = {},
             onPhotoListClick = {},
+            onOpenSettingsClick = {},
         )
     }
 }
