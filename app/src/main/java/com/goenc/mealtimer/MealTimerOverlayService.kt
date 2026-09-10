@@ -29,6 +29,10 @@ private const val OverlayMaxContentLines = 4
 private const val OverlayTextSizeSp = 15f
 private const val OverlayWidthDp = 95
 private const val OverlayTextHeightDp = 60
+private const val OverlayCloseTextSizeSp = 32f
+private const val OverlayCloseButtonSizeDp = 40
+private const val OverlayCloseButtonTopMarginDp = 2
+private const val OverlayCloseButtonEndMarginDp = 2
 
 class MealTimerOverlayService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -115,12 +119,13 @@ class MealTimerOverlayService : Service() {
 
         val closeText = TextView(this).apply {
             text = "×"
+            contentDescription = "閉じる"
             setTextColor(Color.WHITE)
-            textSize = 20f
+            textSize = OverlayCloseTextSizeSp
             gravity = Gravity.CENTER
-            setPadding(6, 0, 0, 0)
+            setPadding(0, 0, 0, 0)
             setOnClickListener { stopSelf() }
-            visibility = View.GONE
+            visibility = View.VISIBLE
         }
 
         val textContainer = LinearLayout(this).apply {
@@ -153,7 +158,17 @@ class MealTimerOverlayService : Service() {
             clipToPadding = false
             setPadding(7, 12, 6, 8)
             addView(textContainer)
-            addView(closeText)
+            addView(
+                closeText,
+                LinearLayout.LayoutParams(
+                    dpToPx(OverlayCloseButtonSizeDp),
+                    dpToPx(OverlayCloseButtonSizeDp),
+                ).apply {
+                    gravity = Gravity.TOP
+                    topMargin = dpToPx(OverlayCloseButtonTopMarginDp)
+                    marginEnd = dpToPx(OverlayCloseButtonEndMarginDp)
+                },
+            )
             setOnTouchListener(createDragTouchListener(params))
         }
         overlayView = root
